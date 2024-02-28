@@ -1,0 +1,77 @@
+import * as React from 'react';
+import Image from './Image/Image';
+import styles from './Hero.module.scss';
+import { IImage } from '../IImage';
+
+export interface IHeroProps {
+  title: string;
+  fontFamily: string;
+  fontColor?: string;
+  textBackdrop: boolean;
+}
+
+interface IHeroState {
+  images: IImage[];
+}
+
+class Hero extends React.Component<IHeroProps, IHeroState> {
+  constructor(props: IHeroProps) {
+    super(props);
+    this.state = {
+      images: [],
+    };
+  }
+
+  public componentDidMount() {
+    // Fetch data from SharePoint list here
+    this.fetchImageData();
+  }
+
+  private fetchImageData = () => {
+    // Make REST API call to fetch data from SharePoint list
+    // Adjust URL and headers as per your SharePoint environment
+    fetch(`/_api/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json;odata=nometadata',
+        'Content-Type': 'application/json;odata=nometadata'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      // Map fetched data to IImage interface
+      const images: IImage[] = data.value.map((item: any) => ({
+        title: item.Title,
+        imageUrl: item.ImageUrl,
+        linkUrl: item.LinkUrl
+      }));
+      // Update state with fetched images
+      this.setState({ images });
+    })
+    .catch(error => {
+      console.error('Error fetching data:', error);
+    });
+  }
+
+  public render() {
+    const { title, fontFamily, fontColor, textBackdrop } = this.props;
+    const { images } = this.state;
+
+    const backgroundColor = textBackdrop ? 'rgba(0, 0, 0, 0.4)' : 'unset';
+
+    return (
+      <div className={styles.container}>
+        {title && <h3 className={styles.title}>{title}</h3>}
+        <div className={styles.hero}>
+          {images.map((image: IImage, index: number) => (
+            <div className={styles.imageContainer} key={index} onClick={() => { window.location.href = image.linkUrl }}>
+              <Image item={image} fontFamily={fontFamily} fontColor={fontColor} backgroundColor={backgroundColor} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+}
+
+export default Hero;
