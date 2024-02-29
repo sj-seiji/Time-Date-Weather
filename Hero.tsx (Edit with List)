@@ -1,63 +1,51 @@
 import * as React from 'react';
-import Image from './Image/Image';
 import styles from './Hero.module.scss';
+import { IHeroProps } from './IHeroProps';
 import { IImage } from '../IImage';
-
-export interface IHeroProps {
-  title: string;
-  fontFamily: string;
-  fontColor?: string;
-  textBackdrop: boolean;
-}
 
 interface IHeroState {
   images: IImage[];
 }
 
-class Hero extends React.Component<IHeroProps, IHeroState> {
+export default class Hero extends React.Component<IHeroProps, IHeroState> {
   constructor(props: IHeroProps) {
     super(props);
+
     this.state = {
-      images: [],
+      images: []
     };
   }
 
-  public componentDidMount() {
-    // Fetch data from SharePoint list here
-    this.fetchImageData();
+  componentDidMount() {
+    this._getListData().then((listItems: any[]) => {
+      this.setState({
+        images: listItems.map(item => ({
+          title: item.Title,
+          imageUrl: item.ImageUrl,
+          linkUrl: item.LinkUrl
+        }))
+      });
+    });
   }
 
-  private fetchImageData = () => {
-    // Make REST API call to fetch data from SharePoint list
-    // Adjust URL and headers as per your SharePoint environment
-    fetch(`/_api/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl`, {
-      method: 'GET',
+  private _getListData(): Promise<any[]> {
+    return fetch(`/_api/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl`, {
       headers: {
         'Accept': 'application/json;odata=nometadata',
         'Content-Type': 'application/json;odata=nometadata'
       }
     })
     .then(response => response.json())
-    .then(data => {
-      // Map fetched data to IImage interface
-      const images: IImage[] = data.value.map((item: any) => ({
-        title: item.Title,
-        imageUrl: item.ImageUrl,
-        linkUrl: item.LinkUrl
-      }));
-      // Update state with fetched images
-      this.setState({ images });
-    })
+    .then(data => data.value)
     .catch(error => {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching list items:', error);
+      return [];
     });
   }
 
-  public render() {
+  render() {
     const { title, fontFamily, fontColor, textBackdrop } = this.props;
     const { images } = this.state;
-
-    const backgroundColor = textBackdrop ? 'rgba(0, 0, 0, 0.4)' : 'unset';
 
     return (
       <div className={styles.container}>
@@ -65,7 +53,8 @@ class Hero extends React.Component<IHeroProps, IHeroState> {
         <div className={styles.hero}>
           {images.map((image: IImage, index: number) => (
             <div className={styles.imageContainer} key={index} onClick={() => { window.location.href = image.linkUrl }}>
-              <Image item={image} fontFamily={fontFamily} fontColor={fontColor} backgroundColor={backgroundColor} />
+              <img src={image.imageUrl} alt={image.title} style={{ width: '100%', height: '100%' }} />
+              <div className={styles.caption} style={{ fontFamily, color: fontColor, background: textBackdrop ? 'rgba(0,0,0,0.4)' : 'unset' }}>{image.title}</div>
             </div>
           ))}
         </div>
@@ -73,5 +62,3 @@ class Hero extends React.Component<IHeroProps, IHeroState> {
     );
   }
 }
-
-export default Hero;
