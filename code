@@ -1,20 +1,24 @@
-public async render(): Promise<void> {
-    const listItems = await this._getListData();
+import { SPHttpClient, SPHttpClientConfiguration, SPHttpClientResponse, ISPHttpClientConfiguration } from '@microsoft/sp-http';
 
-    const element = React.createElement(
-      Hero,
-      {
-        title: this.properties.title,
-        images: listItems.map(item => ({
-          title: item.Title,
-          imageUrl: item.ImageUrl,
-          linkUrl: item.LinkUrl
-        })),
-        fontFamily: "Arial",
-        fontColor: "black",
-        textBackdrop: true
-      }
-    );
+// Inside your class definition
 
-    ReactDom.render(element, this.domElement);
-  }
+private _getListData(): Promise<any[]> {
+  const requestHeaders: Headers = new Headers();
+  requestHeaders.append('Accept', 'application/json;odata=nometadata');
+  requestHeaders.append('Content-Type', 'application/json;odata=nometadata');
+
+  const spHttpClientOptions: ISPHttpClientConfiguration = {
+    headers: requestHeaders
+  };
+
+  const spHttpClient: SPHttpClient = this.context.spHttpClient;
+  const requestUrl: string = this.context.pageContext.web.absoluteUrl + `/_api/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl`;
+
+  return spHttpClient.get(requestUrl, SPHttpClient.configurations.v1, spHttpClientOptions)
+    .then((response: SPHttpClientResponse) => {
+      return response.json();
+    })
+    .then((data: any) => {
+      return data.value;
+    }) as Promise<any[]>;
+}
