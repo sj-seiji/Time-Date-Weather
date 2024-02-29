@@ -1,0 +1,20 @@
+public async render(): Promise<void> {
+    const listItems = await this._getListData();
+
+    const element = React.createElement(
+      Hero,
+      {
+        title: this.properties.title,
+        images: listItems.map(item => ({
+          title: item.Title,
+          imageUrl: item.ImageUrl,
+          linkUrl: item.LinkUrl
+        })),
+        fontFamily: "Arial",
+        fontColor: "black",
+        textBackdrop: true
+      }
+    );
+
+    ReactDom.render(element, this.domElement);
+  }
