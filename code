@@ -1,24 +1,110 @@
-import { SPHttpClient, SPHttpClientConfiguration, SPHttpClientResponse, ISPHttpClientConfiguration } from '@microsoft/sp-http';
+import * as React from 'react';
+import styles from './Hero.module.scss';
+import { IHeroProps } from './IHeroProps';
+import { IImage } from '../IImage';
 
-// Inside your class definition
+export interface IHeroState {
+  images: IImage[];
+}
 
-private _getListData(): Promise<any[]> {
-  const requestHeaders: Headers = new Headers();
-  requestHeaders.append('Accept', 'application/json;odata=nometadata');
-  requestHeaders.append('Content-Type', 'application/json;odata=nometadata');
+export default class Hero extends React.Component<IHeroProps, IHeroState> {
+  constructor(props: IHeroProps) {
+    super(props);
 
-  const spHttpClientOptions: ISPHttpClientConfiguration = {
-    headers: requestHeaders
-  };
+    this.state = {
+      images: []
+    };
+  }
 
-  const spHttpClient: SPHttpClient = this.context.spHttpClient;
-  const requestUrl: string = this.context.pageContext.web.absoluteUrl + `/_api/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl`;
+  public componentDidMount() {
+    this._fetchListData();
+  }
 
-  return spHttpClient.get(requestUrl, SPHttpClient.configurations.v1, spHttpClientOptions)
-    .then((response: SPHttpClientResponse) => {
-      return response.json();
+  private _fetchListData() {
+    const appWebUrl = this.context.pageContext.web.absoluteUrl;
+    const hostWebUrl = 'YourHostWebUrl'; // Replace this with your host web URL
+    const requestUrl = appWebUrl + `/_api/SP.AppContextSite(@target)/web/lists/getbytitle('YourListName')/items?$select=Title,ImageUrl,LinkUrl&@target='${hostWebUrl}'`;
+
+    // Using SP.RequestExecutor
+    this._getListDataWithExecutor(appWebUrl, requestUrl)
+      .then((listItems: any[]) => {
+        this.setState({
+          images: listItems.map(item => ({
+            title: item.Title,
+            imageUrl: item.ImageUrl,
+            linkUrl: item.LinkUrl
+          }))
+        });
+      })
+      .catch(error => {
+        console.error('Error fetching list items with SP.RequestExecutor:', error);
+      });
+
+    // Using fetch API
+    // this._getListDataWithFetch(requestUrl)
+    //   .then((listItems: any[]) => {
+    //     this.setState({
+    //       images: listItems.map(item => ({
+    //         title: item.Title,
+    //         imageUrl: item.ImageUrl,
+    //         linkUrl: item.LinkUrl
+    //       }))
+    //     });
+    //   })
+    //   .catch(error => {
+    //     console.error('Error fetching list items with fetch API:', error);
+    //   });
+  }
+
+  private _getListDataWithExecutor(appWebUrl: string, requestUrl: string): Promise<any[]> {
+    const executor = new SP.RequestExecutor(appWebUrl);
+
+    return new Promise<any[]>((resolve, reject) => {
+      executor.executeAsync({
+        url: requestUrl,
+        method: "GET",
+        success: (data) => {
+          const responseData = JSON.parse(data.body);
+          resolve(responseData.value);
+        },
+        error: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+
+  private _getListDataWithFetch(requestUrl: string): Promise<any[]> {
+    return fetch(requestUrl, {
+      headers: {
+        'Accept': 'application/json;odata=nometadata',
+        'Content-Type': 'application/json;odata=nometadata'
+      }
     })
-    .then((data: any) => {
-      return data.value;
-    }) as Promise<any[]>;
+      .then(response => response.json())
+      .then(data => data.value)
+      .catch(error => {
+        console.error('Error fetching list items with fetch API:', error);
+        return [];
+      });
+  }
+
+  public render(): JSX.Element {
+    const { title, fontFamily, fontColor, textBackdrop } = this.props;
+    const { images } = this.state;
+
+    return (
+      <div className={styles.container}>
+        {title && <h3 className={styles.title}>{title}</h3>}
+        <div className={styles.hero}>
+          {images.map((image: IImage, index: number) => (
+            <div className={styles.imageContainer} key={index} onClick={() => { window.location.href = image.linkUrl }}>
+              <img src={image.imageUrl} alt={image.title} style={{ width: '100%', height: '100%' }} />
+              <div className={styles.caption} style={{ fontFamily, color: fontColor, background: textBackdrop ? 'rgba(0,0,0,0.4)' : 'unset' }}>{image.title}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 }
