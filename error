@@ -1,0 +1,4 @@
+Argument of type '(response: SPHttpClientResponse) => Promise<any>' is not assignable to parameter of type '(value: SPHttpClientResponse) => any'.
+  Types of parameters 'response' and 'value' are incompatible.
+    Type 'import("c:/Users/szapanta/Documents/Hero/NWH-Intranet/nwh-spwp-hero/node_modules/@microsoft/sp-property-pane/node_modules/@microsoft/sp-http/dist/index-internal").SPHttpClientResponse' is not assignable to type 'import("c:/Users/szapanta/Documents/Hero/NWH-Intranet/nwh-spwp-hero/node_modules/@microsoft/sp-http/node_modules/@microsoft/sp-http-base/dist/index-internal").SPHttpClientResponse'.
+      Types have separate declarations of a private property '_correlationId'.ts(2345)
