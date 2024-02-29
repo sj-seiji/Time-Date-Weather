@@ -1,51 +1,173 @@
 import * as React from 'react';
-import Image from './Image/Image';
-import styles from './Hero.module.scss';
-import { IHeroProps } from './IHeroProps';
-import { IImage } from '../IImage';
-import ImageCarousel from './ImageCarousel/ImageCarousel';
+import * as ReactDom from 'react-dom';
+import { Version } from '@microsoft/sp-core-library';
+import {
+  IPropertyPaneConfiguration,
+  PropertyPaneTextField,
+  PropertyPaneDropdown,
+  PropertyPaneToggle,
+  IPropertyPanePage,
+  PropertyPaneLabel,
+} from '@microsoft/sp-property-pane';
 
-const Hero = ({ title, images, fontFamily, fontColor, textBackdrop }: IHeroProps): JSX.Element => {
-  const primaryImage = images[0];
-  const secondaryImages = images.slice(1);
-  const backgroundColor = textBackdrop ? 'rgb(0,0,0,0.4)' : 'unset';
+import { PropertyFieldMessage } from '@pnp/spfx-property-controls/lib/PropertyFieldMessage';
+import { MessageBarType } from 'office-ui-fabric-react/lib/MessageBar';
 
-  function formatImagesIntoRows(images: IImage[]): IImage[][] {
-    return images.reduce((rows, key, index) => (
-      index % 2 === 0 ? rows.push([key]) : rows[rows.length - 1].push(key)
-    ) && rows, []);
-  }
+import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
+import { PropertyFieldCollectionData, CustomCollectionFieldType } from '@pnp/spfx-property-controls/lib/PropertyFieldCollectionData';
 
-  return (
-    <div className={styles.container}>
-      { title && <h3 className={styles.title}>{title}</h3> }
-      <div className={styles.hero}>
-        { primaryImage && 
-          <div className={styles.primaryContainer}>
-            <div className={styles.imageContainer} onClick={() => { window.location.href = primaryImage.linkUrl }}>
-              <Image item={primaryImage} fontFamily={fontFamily} fontColor={fontColor} backgroundColor={backgroundColor} />
-            </div>
-          </div>
-        }
-        { secondaryImages.length >= 1 && 
-          <div className={styles.secondaryContainer} data-imgcount={secondaryImages.length}>
-          {
-          formatImagesIntoRows(secondaryImages).map((row: IImage[], idx: React.Key) => (
-            <div className={styles.imageRow} key={idx}>
-              {row.map((image: IImage, idx: React.Key) => (
-                <div className={styles.imageContainer} key={idx} onClick={() => {window.location.href = image.linkUrl}}>
-                  <Image item={image} fontFamily={fontFamily} fontColor={fontColor} backgroundColor={backgroundColor} />
-                </div>
-              ))}
-            </div>
-          ))
-          }
-          </div>
-        }
-      </div>
-      <ImageCarousel images={images} fontFamily={fontFamily} fontColor={fontColor} backgroundColor={backgroundColor} />
-    </div>
-  );
+import * as strings from 'HeroWebPartStrings';
+import Hero from './components/Hero';
+import { IHeroProps } from './components/IHeroProps';
+import { IImage } from './IImage';
+import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http'; // new imp, connect to SP using web services 
+
+export interface SPList{
+  value: IImage[];
 }
 
-export default Hero;
+export interface IHeroWebPartProps {
+  title: string;
+  images: IImage[];
+  fontFamily:string;
+  fontColor?:string;
+  textBackdrop: boolean;
+}
+
+
+export default class HeroWebPart extends BaseClientSideWebPart<IHeroWebPartProps> {
+
+  private _getListData(): Promise<IImage[]> {
+    const url = `${this.context.pageContext.web.absoluteUrl}/_api/web/lists/GetByTitle('Hero List')/Items?$select=Title,ImageUrl,LinkUrl`;
+    return this.context.spHttpClient.get(url, SPHttpClient.configurations.v1)
+      .then((response: SPHttpClientResponse) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch list items. Error: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then((data: any) => data.value)
+      .catch((error: any) => {
+        console.error('Error fetching list items:', error);
+        return [];
+      });
+  }
+
+
+  public async onInit(): Promise<void> {
+    this.properties.images = this.properties.images || [];
+    return await super.onInit();
+  }
+
+  
+  public render(): void {
+    const element: React.ReactElement<IHeroProps> = React.createElement(
+      Hero,
+      {
+        title: this.properties.title,
+        images: [],
+        fontFamily: this.properties.fontFamily,
+        fontColor: this.properties.fontColor,
+        textBackdrop: this.properties.textBackdrop,
+        ...this.properties,
+      }
+    );
+
+    ReactDom.render(element, this.domElement);
+  }
+
+  protected onDispose(): void {
+    ReactDom.unmountComponentAtNode(this.domElement);
+  }
+
+  protected get dataVersion(): Version {
+    return Version.parse('1.0');
+  }
+
+  protected getPropertyPaneConfiguration(): IPropertyPaneConfiguration {
+    return {
+      pages: [
+        {
+          header: {
+            description: '',
+          },
+          displayGroupsAsAccordion: true,
+          groups: [
+            {
+              groupName: 'Slide Settings',
+              isCollapsed: false,
+              groupFields: [
+                PropertyPaneTextField('title', {
+                  label: strings.TitleFieldLabel,
+                }),
+                PropertyFieldCollectionData('images', {
+                  key: 'images',
+                  label: 'Images',
+                  panelHeader: 'Image Collection',
+                  manageBtnLabel: 'Manage Images',
+                  panelDescription: 'Note: Limited to five images',
+                  value: this.properties.images.slice(0, 5), // Limits the uploads to five images
+                  fields: [
+                    {
+                      id: 'imageUrl',
+                      title: 'Image URL',
+                      type: CustomCollectionFieldType.url,
+                      required: true,
+                    },
+                    {
+                      id: 'linkUrl',
+                      title: 'Link URL',
+                      type: CustomCollectionFieldType.url,
+                      required: true,
+                    },
+                    {
+                      id: 'title',
+                      title: 'Title',
+                      type: CustomCollectionFieldType.string,
+                      required: true,
+                    },
+                  ]
+                }),
+              ],
+            },
+            {
+              groupName: 'Internal Comm. Settings',
+              isCollapsed: true,
+              groupFields: [
+                PropertyFieldMessage("", {
+                  key: "MessageKey",
+                  text: "Requires Internal Comm. approval",
+                  messageType: MessageBarType.warning,
+                  isVisible: true
+                }),
+                PropertyPaneDropdown('fontFamily', {
+                  label: 'Select the type of font:',
+                  options: [
+                    { key: 'MFT Perfected', text: 'MFT Perfected' },
+                    { key: 'Galaxie Polaris Condensed Bold', text: 'Galaxie Polaris Condensed Bold' },
+                    { key: 'Galaxie Polaris Book', text: 'Galaxie Polaris Book' },
+                    { key: 'Galaxie Polaris Bold', text: 'Galaxie Polaris Bold' },
+                    { key: 'Galaxie Polaris Bold Italic', text: 'Galaxie Polaris Bold Italic' },
+                    { key: 'Galaxie Polaris Medium', text: 'Galaxie Polaris Medium' },
+                    { key: 'Galaxie Polaris Medium Italic', text: 'Galaxie Polaris Medium Italic' },
+                    { key: 'Galaxie Polaris Book Italic', text: 'Galaxie Polaris Book Italic' },
+                    { key: 'Arial', text: 'Arial' },
+                    { key: 'Segoe UI', text: 'Segoe UI' },
+                    { key: 'Roboto', text: 'Roboto' }
+                  ]
+                }),
+                PropertyPaneTextField('fontColor', {
+                  label: 'Enter font color (ex:white, black, blue, navy)'
+                }),
+                PropertyPaneToggle('textBackdrop', {
+                  label: 'Add backdrop behind title text?',
+                  checked: this.properties.textBackdrop
+                })
+              ],
+            }
+          ],
+        },
+      ],
+    };
+  }
+}
