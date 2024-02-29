@@ -2,3 +2,8 @@ Argument of type '(response: SPHttpClientResponse) => Promise<any>' is not assig
   Types of parameters 'response' and 'value' are incompatible.
     Type 'import("c:/Users/szapanta/Documents/Hero/NWH-Intranet/nwh-spwp-hero/node_modules/@microsoft/sp-property-pane/node_modules/@microsoft/sp-http/dist/index-internal").SPHttpClientResponse' is not assignable to type 'import("c:/Users/szapanta/Documents/Hero/NWH-Intranet/nwh-spwp-hero/node_modules/@microsoft/sp-http/node_modules/@microsoft/sp-http-base/dist/index-internal").SPHttpClientResponse'.
       Types have separate declarations of a private property '_correlationId'.ts(2345)
+
+
+
+Non-abstract class 'HeroWebPart' does not implement all abstract members of 'BaseClientSideWebPart<IHeroWebPartProps>'ts(18052)
+index-internal.d.ts(186, 24): Non-abstract class 'HeroWebPart' does not implement inherited abstract member 'render' from class 'BaseClientSideWebPart<IHeroWebPartProps>'.
