@@ -1,32 +1,31 @@
 import { Text } from '@microsoft/sp-core-library';
 import { SPHttpClient, SPHttpClientResponse } from "@microsoft/sp-http";
-
+import { IImage } from '../IImage';
+ 
 export class SPOService {
     private spHttpClient: SPHttpClient;
     private webUrl: string;
     private listName: string;
-
+ 
     constructor(spHttpClient: SPHttpClient, webUrl: string, listName: string) {
         this.spHttpClient = spHttpClient;
         this.webUrl = webUrl;
         this.listName = listName;
     }
-
-    public getListItems(){
-        let select: string = "ImageUrl,LinkUrl,Title";
+ 
+    public async getListItems (): Promise<IImage[]> {
+        let select: string = "ImageURL,LinkURL,Title,Active,SortOrder";
         // let filter: string = "Active eq 1";
         // let expand: string = "Consortium_x0020_Name";
-
+ 
         let endPoint = Text.format("{0}/_api/web/lists/getbytitle('{1}')/items?$select={2}", this.webUrl, this.listName, select);
-        return this.getData(endPoint)
-        .then(data => {
-            console.log(data.value);
-
-            
-            
-          });
+        let images: IImage[];
+        await this.getData(endPoint).then(data => {
+            images = data.value
+        });
+        return images;
     }
-
+ 
     private getData(endPoint: string){
         return new Promise<any>((resolve, reject) => {
             this.spHttpClient.get(endPoint, SPHttpClient.configurations.v1)
